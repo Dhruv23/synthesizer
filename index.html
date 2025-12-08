@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modular Web Synth</title>
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div>
+        <h1>Modular Web Synth</h1>
+        <p class="subtitle">Unison subtractive engine with stackable FX and live scopes</p>
+      </div>
+      <div class="session-actions">
+        <button id="start-audio">Start Audio</button>
+        <button id="stop-audio" disabled>Stop Audio</button>
+      </div>
+    </header>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>Oscillator</h2>
+        <div class="control-row">
+          <label for="waveform">Waveform</label>
+          <select id="waveform">
+            <option value="sawtooth">Saw</option>
+            <option value="square">Square</option>
+            <option value="sine">Sine</option>
+            <option value="triangle">Triangle</option>
+            <option value="noise">Noise</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <label for="frequency">Frequency (Hz)</label>
+          <input type="range" id="frequency" min="40" max="1200" step="1" value="220">
+          <span class="value" id="frequency-value">220</span>
+        </div>
+        <div class="control-row">
+          <label for="unison-voices">Unison Voices</label>
+          <input type="range" id="unison-voices" min="1" max="8" step="1" value="4">
+          <span class="value" id="unison-voices-value">4</span>
+        </div>
+        <div class="control-row">
+          <label for="detune">Detune (cents)</label>
+          <input type="range" id="detune" min="0" max="50" step="1" value="12">
+          <span class="value" id="detune-value">12</span>
+        </div>
+        <div class="control-row">
+          <label for="spread">Stereo Spread</label>
+          <input type="range" id="spread" min="0" max="1" step="0.05" value="0.5">
+          <span class="value" id="spread-value">0.5</span>
+        </div>
+        <div class="control-row">
+          <label for="gain">Master Gain</label>
+          <input type="range" id="gain" min="0" max="1" step="0.01" value="0.4">
+          <span class="value" id="gain-value">0.4</span>
+        </div>
+        <div class="control-row">
+          <label for="sample-rate">Sample Rate</label>
+          <select id="sample-rate">
+            <option value="44100">44.1 kHz</option>
+            <option value="48000">48 kHz</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <label for="latency">Latency Hint</label>
+          <select id="latency">
+            <option value="interactive">Interactive</option>
+            <option value="balanced">Balanced</option>
+            <option value="playback">Playback</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <button id="trigger-on">Trigger</button>
+          <button id="trigger-off">Release</button>
+          <label class="inline">
+            <input type="checkbox" id="hold-note" checked>
+            Hold Gate
+          </label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Envelopes</h2>
+        <div class="control-grid">
+          <div>
+            <h3>Amp ADSR</h3>
+            <div class="control-row"><label for="amp-attack">Attack</label><input type="range" id="amp-attack" min="0" max="2" step="0.01" value="0.02"><span class="value" id="amp-attack-value">0.02</span></div>
+            <div class="control-row"><label for="amp-decay">Decay</label><input type="range" id="amp-decay" min="0" max="2" step="0.01" value="0.3"><span class="value" id="amp-decay-value">0.3</span></div>
+            <div class="control-row"><label for="amp-sustain">Sustain</label><input type="range" id="amp-sustain" min="0" max="1" step="0.01" value="0.7"><span class="value" id="amp-sustain-value">0.7</span></div>
+            <div class="control-row"><label for="amp-release">Release</label><input type="range" id="amp-release" min="0" max="4" step="0.01" value="0.5"><span class="value" id="amp-release-value">0.5</span></div>
+          </div>
+          <div>
+            <h3>Filter ADSR</h3>
+            <div class="control-row"><label for="filter-attack">Attack</label><input type="range" id="filter-attack" min="0" max="2" step="0.01" value="0.02"><span class="value" id="filter-attack-value">0.02</span></div>
+            <div class="control-row"><label for="filter-decay">Decay</label><input type="range" id="filter-decay" min="0" max="2" step="0.01" value="0.3"><span class="value" id="filter-decay-value">0.3</span></div>
+            <div class="control-row"><label for="filter-sustain">Sustain</label><input type="range" id="filter-sustain" min="0" max="1" step="0.01" value="0.5"><span class="value" id="filter-sustain-value">0.5</span></div>
+            <div class="control-row"><label for="filter-release">Release</label><input type="range" id="filter-release" min="0" max="4" step="0.01" value="0.5"><span class="value" id="filter-release-value">0.5</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Filter</h2>
+        <div class="control-row">
+          <label for="filter-type">Type</label>
+          <select id="filter-type">
+            <option value="lowpass">Low-pass</option>
+            <option value="highpass">High-pass</option>
+            <option value="bandpass">Band-pass</option>
+          </select>
+        </div>
+        <div class="control-row"><label for="filter-frequency">Cutoff</label><input type="range" id="filter-frequency" min="50" max="12000" step="1" value="1600"><span class="value" id="filter-frequency-value">1600</span></div>
+        <div class="control-row"><label for="filter-q">Resonance (Q)</label><input type="range" id="filter-q" min="0.1" max="18" step="0.1" value="1"><span class="value" id="filter-q-value">1</span></div>
+        <div class="control-row"><label for="filter-env-amount">Env Amount</label><input type="range" id="filter-env-amount" min="0" max="8000" step="10" value="1200"><span class="value" id="filter-env-amount-value">1200</span></div>
+      </div>
+
+      <div class="panel effect-panel">
+        <h2>Effect Chain</h2>
+        <p class="hint">Toggle modules, tweak params, reorder with arrows</p>
+        <div id="effects-container"></div>
+      </div>
+
+      <div class="panel visualization">
+        <h2>Visualization</h2>
+        <canvas id="oscilloscope" width="800" height="200"></canvas>
+        <canvas id="spectrum" width="800" height="200"></canvas>
+        <div class="metrics">
+          <span id="cpu-estimate">CPU: --%</span>
+          <span id="context-info">Sample rate: --</span>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
