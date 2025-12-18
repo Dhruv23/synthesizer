@@ -87,8 +87,19 @@ export class WaveformRenderer {
       let sum = 0;
       params.osc.forEach((osc) => {
         if (!osc.enabled) return;
-        const hz = freq * Math.pow(2, (osc.range + osc.tune) / 12) * detuneRatio;
-        sum += evalWave(osc.wave, hz, t) * osc.volume;
+        const voices = params.featureFlags?.unison ? Math.max(1, osc.unison || 1) : 1;
+        if (voices <= 1) {
+          const hz = freq * Math.pow(2, (osc.range + osc.tune) / 12) * detuneRatio;
+          sum += evalWave(osc.wave, hz, t) * osc.volume;
+        } else {
+          const detune = osc.detune || 0;
+          const perVoiceGain = (osc.volume || 0) / voices;
+          for (let i = 0; i < voices; i++) {
+            const detCents = ((i / Math.max(1, voices - 1)) - 0.5) * 2 * detune;
+            const hz = freq * Math.pow(2, (osc.range + osc.tune) / 12) * detuneRatio * Math.pow(2, detCents / 1200);
+            sum += evalWave(osc.wave, hz, t) * perVoiceGain;
+          }
+        }
       });
       sum += (rand() * 2 - 1) * params.noise.level;
 
@@ -113,14 +124,14 @@ export class WaveformRenderer {
       ctx.stroke();
       return;
     }
-    this._drawSamples(ctx, shifted);
+    this._drawSamples(ctx, shifted, 1.8); // slight zoom-in for combined view
   }
 
-  _drawSamples(ctx, samples) {
+  _drawSamples(ctx, samples, scaleBoost = 1.0) {
     const w = ctx.canvas.width;
     const h = ctx.canvas.height;
     const max = samples.reduce((m, v) => Math.max(m, Math.abs(v)), 0.0001);
-    const scale = (h * 0.4) / max;
+    const scale = (h * 0.4 * scaleBoost) / max;
 
     // center line
     ctx.strokeStyle = "#444";

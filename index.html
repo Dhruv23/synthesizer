@@ -8,6 +8,70 @@
 </head>
 <body>
   <div class="app">
+    <div class="preset-bar">
+      <button class="ghost" id="preset-prev">◀</button>
+      <div class="preset-name" id="preset-name-display">Init</div>
+      <button class="ghost" id="preset-next">▶</button>
+      <button class="primary" id="preset-browser-toggle">Presets</button>
+      <button class="ghost" id="preset-save">Save</button>
+      <button class="ghost" id="preset-delete">Delete</button>
+      <label class="inline ab-toggle"><input type="checkbox" id="preset-ab"> A/B</label>
+      <button class="ghost" id="piano-roll-toggle">Piano Roll</button>
+    </div>
+    <div class="preset-browser" id="preset-browser">
+      <div class="preset-browser-header">
+        <input type="text" id="preset-search" placeholder="Search presets">
+        <select id="preset-category">
+          <option value="all">All</option>
+          <option value="pads">Pads</option>
+          <option value="bass">Bass</option>
+          <option value="leads">Leads</option>
+          <option value="fx">FX</option>
+          <option value="seq">Sequences</option>
+        </select>
+        <button class="ghost" id="preset-close">Close</button>
+      </div>
+      <div class="preset-list" id="preset-list"></div>
+    </div>
+
+    <div class="piano-roll-view" id="piano-roll-view">
+      <div class="roll-toolbar">
+        <div class="roll-transport">
+          <button id="roll-play">▶</button>
+          <button id="roll-stop">■</button>
+          <label>BPM <input type="number" id="roll-bpm" min="40" max="220" value="120"></label>
+          <label>Loop (bars) <input type="number" id="roll-loop" min="1" max="8" value="2"></label>
+          <label>Snap
+            <select id="roll-snap">
+              <option value="0.25">1/4</option>
+              <option value="0.125" selected>1/8</option>
+              <option value="0.0833">1/12</option>
+              <option value="0.0625">1/16</option>
+              <option value="0.03125">1/32</option>
+            </select>
+          </label>
+          <label class="inline"><input type="checkbox" id="roll-autoscroll" checked> Auto-scroll</label>
+        </div>
+        <div class="roll-zoom">
+          <label>Zoom X <input type="range" id="roll-zoom-x" min="0.5" max="4" step="0.1" value="1"></label>
+          <label>Zoom Y <input type="range" id="roll-zoom-y" min="0.5" max="2" step="0.1" value="1"></label>
+          <button id="roll-zoom-fit">Zoom to loop</button>
+        </div>
+      </div>
+      <div class="roll-wrapper">
+        <div class="roll-left">
+          <canvas id="piano-keys" width="80" height="360"></canvas>
+        </div>
+        <div class="roll-main">
+          <canvas id="piano-roll" width="900" height="360"></canvas>
+          <div class="velocity-panel">
+            <canvas id="velocity-lane" width="900" height="140"></canvas>
+            <label class="inline"><input type="checkbox" id="velocity-toggle" checked> Show Velocity</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <header class="header">
       <h1>Synthesizer</h1>
       <div class="actions">
@@ -24,6 +88,18 @@
             <input type="checkbox" id="osc1-enabled" checked>
             Enabled
           </label>
+          <div class="inline-grid">
+            <label>Unison Voices
+              <input type="number" id="osc1-unison" min="1" max="8" value="1">
+            </label>
+            <label>Detune (cents)
+              <input type="range" id="osc1-detune" min="0" max="50" step="0.5" value="0">
+            </label>
+            <label>Stereo Spread
+              <input type="range" id="osc1-spread" min="0" max="1" step="0.05" value="0">
+            </label>
+            <label class="inline"><input type="checkbox" id="osc1-randphase"> Rand Phase</label>
+          </div>
           <label>Waveform
             <select id="osc1-wave">
               <option value="sine">Sine</option>
@@ -55,6 +131,18 @@
             <input type="checkbox" id="osc2-enabled" checked>
             Enabled
           </label>
+          <div class="inline-grid">
+            <label>Unison Voices
+              <input type="number" id="osc2-unison" min="1" max="8" value="1">
+            </label>
+            <label>Detune (cents)
+              <input type="range" id="osc2-detune" min="0" max="50" step="0.5" value="0">
+            </label>
+            <label>Stereo Spread
+              <input type="range" id="osc2-spread" min="0" max="1" step="0.05" value="0">
+            </label>
+            <label class="inline"><input type="checkbox" id="osc2-randphase"> Rand Phase</label>
+          </div>
           <label>Waveform
             <select id="osc2-wave">
               <option value="sine">Sine</option>
@@ -86,6 +174,18 @@
             <input type="checkbox" id="osc3-enabled" checked>
             Enabled
           </label>
+          <div class="inline-grid">
+            <label>Unison Voices
+              <input type="number" id="osc3-unison" min="1" max="8" value="1">
+            </label>
+            <label>Detune (cents)
+              <input type="range" id="osc3-detune" min="0" max="50" step="0.5" value="0">
+            </label>
+            <label>Stereo Spread
+              <input type="range" id="osc3-spread" min="0" max="1" step="0.05" value="0">
+            </label>
+            <label class="inline"><input type="checkbox" id="osc3-randphase"> Rand Phase</label>
+          </div>
           <label>Waveform
             <select id="osc3-wave">
               <option value="sine">Sine</option>
@@ -196,13 +296,81 @@
           <label>Master
             <input type="range" id="master" min="0" max="1" step="0.01" value="0.8">
           </label>
+          <div class="fx-panel">
+            <h3>FX Chain</h3>
+            <label class="inline"><input type="checkbox" id="fx-dist"> Distortion</label>
+            <label class="inline"><input type="checkbox" id="fx-chorus"> Chorus</label>
+            <label class="inline"><input type="checkbox" id="fx-delay"> Delay</label>
+            <label class="inline"><input type="checkbox" id="fx-reverb"> Reverb</label>
+            <label class="inline"><input type="checkbox" id="fx-comp"> Compressor</label>
+          </div>
         </div>
       </div>
 
-      <div class="keyboard-panel">
-        <h2>Keyboard</h2>
-        <div id="keyboard" class="keyboard"></div>
+      <div class="mod-row">
+        <div class="module lfo green">
+          <h2>LFO 2</h2>
+          <label>Waveform
+            <select id="lfo2-wave">
+              <option value="sine">Sine</option>
+              <option value="square">Square</option>
+              <option value="sawtooth">Saw</option>
+              <option value="triangle" selected>Triangle</option>
+            </select>
+          </label>
+          <label>Frequency
+            <input type="range" id="lfo2-freq" min="0.1" max="20" step="0.1" value="2">
+          </label>
+          <label>Depth
+            <input type="range" id="lfo2-depth" min="0" max="1" step="0.01" value="0.1">
+          </label>
+          <label class="inline"><input type="checkbox" id="lfo2-sync"> Tempo Sync</label>
+          <label>Division
+            <select id="lfo2-div">
+              <option value="1">1/1</option>
+              <option value="0.5">1/2</option>
+              <option value="0.25" selected>1/4</option>
+              <option value="0.125">1/8</option>
+              <option value="0.0833">1/12</option>
+              <option value="0.0625">1/16</option>
+            </select>
+          </label>
+          <label>Phase Offset (deg)
+            <input type="range" id="lfo2-phase" min="0" max="360" step="1" value="0">
+          </label>
+          <label>Fade-in (s)
+            <input type="range" id="lfo2-fade" min="0" max="4" step="0.05" value="0">
+          </label>
+          <label class="inline"><input type="checkbox" id="lfo2-one"> One-shot</label>
+        </div>
+        <div class="module modmatrix" style="background:#222;color:#f6f6f6;">
+          <h2>Mod Matrix</h2>
+          <div id="mod-matrix"></div>
+        </div>
+        <div class="module" style="background:#333;color:#f6f6f6;">
+          <h2>Piano Roll</h2>
+          <div class="pianoroll-controls">
+            <button id="roll-play">Play</button>
+            <button id="roll-stop">Stop</button>
+            <label>Snap
+              <select id="roll-snap">
+                <option value="0.25">1/4</option>
+                <option value="0.125" selected>1/8</option>
+                <option value="0.0833">1/12</option>
+                <option value="0.0625">1/16</option>
+              </select>
+            </label>
+            <label>Loop (bars)
+              <input type="number" id="roll-loop" min="1" max="8" value="2">
+            </label>
+            <label>BPM
+              <input type="number" id="roll-bpm" min="40" max="220" value="120">
+            </label>
+          </div>
+          <canvas id="piano-roll" width="700" height="200"></canvas>
+        </div>
       </div>
+
     </section>
   </div>
 

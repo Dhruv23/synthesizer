@@ -1,6 +1,16 @@
-export function createOscillatorNode(ctx, type) {
+export function createOscillatorNode(ctx, type, randomStartPhase = false) {
   const osc = ctx.createOscillator();
   osc.type = type;
+  if (randomStartPhase && osc.type !== "custom") {
+    const now = ctx.currentTime;
+    const phaseOffset = Math.random() * (2 * Math.PI);
+    const freq = 440;
+    osc.frequency.setValueAtTime(freq, now);
+    const real = new Float32Array([0, Math.cos(phaseOffset)]);
+    const imag = new Float32Array([0, Math.sin(phaseOffset)]);
+    const wave = ctx.createPeriodicWave(real, imag, { disableNormalization: true });
+    osc.setPeriodicWave(wave);
+  }
   return osc;
 }
 
