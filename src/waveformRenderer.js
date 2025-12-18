@@ -1,29 +1,75 @@
-import { ADSRMath } from "./utils/adsrMath.js";
 import { evalWave } from "./utils/waves.js";
 import { biquadSim } from "./utils/biquadSim.js";
 
 export class WaveformRenderer {
-  constructor(canvas) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext("2d");
+  constructor(canvases) {
+    this.canvases = canvases;
+    Object.values(this.canvases).forEach((c) => this._resize(c));
+    window.addEventListener("resize", () => {
+      Object.values(this.canvases).forEach((c) => this._resize(c));
+    });
   }
 
-  render(params, freq) {
-    const width = this.canvas.width;
-    const height = this.canvas.height;
-    this.ctx.fillStyle = "#0a0a0a";
-    this.ctx.fillRect(0, 0, width, height);
+  renderAll(params, freq) {
+    Object.values(this.canvases).forEach((c) => {
+      if (c && (c.width === 0 || c.height === 0)) this._resize(c);
+    });
+    this._renderOsc("osc1", params, freq, 0);
+    this._renderOsc("osc2", params, freq, 1);
+    this._renderOsc("osc3", params, freq, 2);
+    this._renderCombined(params, freq);
+  }
 
+  _renderOsc(key, params, freq, idx) {
+    const canvas = this.canvases[key];
+    if (!canvas) return;
+    const oscCfg = params.osc[idx];
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.fillStyle = "#0a0a0a";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 3;
+    // Disabled: draw baseline only
+    if (!oscCfg.enabled) {
+      ctx.strokeStyle = "#555";
+      ctx.beginPath();
+      ctx.moveTo(0, h / 2);
+      ctx.lineTo(w, h / 2);
+      ctx.stroke();
+      return;
+    }
     const sr = 2048;
-    const period = 1 / Math.max(1, freq);
+    const period = 1 / Math.max(1, freq * Math.pow(2, (oscCfg.range + oscCfg.tune) / 12));
     const totalTime = period * 2;
     const totalSamples = Math.max(32, Math.floor(sr * totalTime));
+    const samples = new Float32Array(totalSamples);
+    const amp = params.ampEnv.s; // steady sustain level
+    for (let i = 0; i < totalSamples; i++) {
+      const t = i / sr;
+      samples[i] = evalWave(oscCfg.wave, 1 / period, t) * oscCfg.volume * params.master * amp;
+    }
+    this._drawSamples(ctx, samples);
+  }
 
-    const ampEnv = new ADSRMath(params.ampEnv);
-    const filtEnv = new ADSRMath(params.filter.adsr);
+  _renderCombined(params, freq) {
+    const canvas = this.canvases.combined;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.fillStyle = "#0a0a0a";
+    ctx.fillRect(0, 0, w, h);
 
+    const sr = 4096;
+    const period = 1 / Math.max(1, freq);
+    const totalTime = period * 2;
+    const totalSamples = Math.max(64, Math.floor(sr * totalTime));
+
+    const ampSustain = params.ampEnv.s;
+    const filtSustain = params.filter.adsr.s;
     const cutoffBase = params.filter.cutoff;
-    const cutoffPeak = cutoffBase + params.filter.envAmount;
     const q = params.filter.q;
 
     const lfoFreq = params.lfo.freq;
@@ -32,44 +78,107 @@ export class WaveformRenderer {
 
     const samples = new Float32Array(totalSamples);
     let biquadState = { z1: 0, z2: 0 };
+    const rand = makeRand(performance.now() | 0);
     for (let i = 0; i < totalSamples; i++) {
-      const t = (i / sr);
-      // LFO mod in cents -> Hz detune factor
+      const t = i / sr;
       const lfoVal = evalWave(lfoWave, lfoFreq, t);
       const detuneRatio = Math.pow(2, (lfoVal * lfoDepth * 50) / 1200);
 
       let sum = 0;
       params.osc.forEach((osc) => {
+        if (!osc.enabled) return;
         const hz = freq * Math.pow(2, (osc.range + osc.tune) / 12) * detuneRatio;
         sum += evalWave(osc.wave, hz, t) * osc.volume;
       });
-      // Noise
-      sum += (Math.random() * 2 - 1) * params.noise.level;
+      sum += (rand() * 2 - 1) * params.noise.level;
 
-      // Filter cutoff with envelope
-      const filtEnvVal = cutoffBase + filtEnv.valueAt(t) * params.filter.envAmount;
+      const filtEnvVal = cutoffBase + filtSustain * params.filter.envAmount;
       const cutoff = Math.max(50, Math.min(18000, filtEnvVal));
       const { y, state } = biquadSim(sum, cutoff, q, sr, biquadState);
       biquadState = state;
 
-      // Amp envelope
-      const amp = ampEnv.valueAt(t);
-      samples[i] = y * amp * params.master;
+      samples[i] = y * ampSustain * params.master;
     }
+    // Align combined view to nearest mid zero-crossing to keep wave centered.
+    const shifted = this._alignToZeroCross(samples);
 
-    // Normalize for display
-    const max = samples.reduce((m, v) => Math.max(m, Math.abs(v)), 0.0001);
-    const scale = (height * 0.4) / max;
-
-    this.ctx.strokeStyle = "white";
-    this.ctx.lineWidth = 3;
-    this.ctx.beginPath();
-    for (let i = 0; i < samples.length; i++) {
-      const x = (i / (samples.length - 1)) * width;
-      const y = height / 2 - samples[i] * scale;
-      if (i === 0) this.ctx.moveTo(x, y);
-      else this.ctx.lineTo(x, y);
+    // if silent (all disabled and noise 0), just draw center line
+    if (shifted.every((v) => Math.abs(v) < 1e-6)) {
+      ctx.fillStyle = "#0a0a0a";
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = "#444";
+      ctx.beginPath();
+      ctx.moveTo(0, h / 2);
+      ctx.lineTo(w, h / 2);
+      ctx.stroke();
+      return;
     }
-    this.ctx.stroke();
+    this._drawSamples(ctx, shifted);
   }
+
+  _drawSamples(ctx, samples) {
+    const w = ctx.canvas.width;
+    const h = ctx.canvas.height;
+    const max = samples.reduce((m, v) => Math.max(m, Math.abs(v)), 0.0001);
+    const scale = (h * 0.4) / max;
+
+    // center line
+    ctx.strokeStyle = "#444";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, h / 2);
+    ctx.lineTo(w, h / 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let i = 0; i < samples.length; i++) {
+      const x = (i / (samples.length - 1)) * w;
+      const y = h / 2 - samples[i] * scale;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  _resize(canvas) {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+  }
+
+  _alignToZeroCross(samples) {
+    const len = samples.length;
+    const mid = Math.floor(len / 2);
+    let best = mid;
+    let bestDist = Infinity;
+    for (let i = 1; i < len; i++) {
+      const prev = samples[i - 1];
+      const curr = samples[i];
+      if ((prev <= 0 && curr >= 0) || (prev >= 0 && curr <= 0)) {
+        const dist = Math.abs(i - mid);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = i;
+        }
+      }
+    }
+    const aligned = new Float32Array(len);
+    for (let i = 0; i < len; i++) {
+      aligned[i] = samples[(best + i) % len];
+    }
+    return aligned;
+  }
+}
+
+function makeRand(seed = 1) {
+  let s = seed >>> 0;
+  return function rand() {
+    // xorshift32
+    s ^= s << 13;
+    s ^= s >>> 17;
+    s ^= s << 5;
+    return ((s >>> 0) / 4294967296);
+  };
 }

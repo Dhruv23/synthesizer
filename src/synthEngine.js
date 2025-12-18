@@ -29,11 +29,16 @@ export class SynthEngine {
 
   updateParams(params) {
     if (!this.ctx) return;
+    this.currentParams = params;
     this.master.gain.setTargetAtTime(params.master, this.ctx.currentTime, 0.01);
     this.filter.frequency.setTargetAtTime(params.filter.cutoff, this.ctx.currentTime, 0.01);
     this.filter.Q.setTargetAtTime(params.filter.q, this.ctx.currentTime, 0.01);
     this.ampEnv.set(params.ampEnv);
     this.filterEnv.set(params.filter.adsr);
+    if (this.oscillators.length && !this._suppressRetrigger) {
+      // rebuild current note with new settings
+      this.triggerOn(this.currentFreq, params);
+    }
   }
 
   triggerOn(freq, params) {
@@ -42,7 +47,9 @@ export class SynthEngine {
     const now = this.ctx.currentTime;
 
     this.stop();
+    this._suppressRetrigger = true;
     this.updateParams(params);
+    this._suppressRetrigger = false;
 
     // LFO
     this.lfo = createLfo(this.ctx, params.lfo.wave, params.lfo.freq);
@@ -51,19 +58,21 @@ export class SynthEngine {
     this.lfo.connect(lfoGain);
 
     // Oscillators
-    this.oscillators = params.osc.map((oscCfg) => {
-      const osc = createOscillatorNode(this.ctx, oscCfg.wave);
-      const gain = this.ctx.createGain();
-      gain.gain.value = oscCfg.volume;
-      const offsetSemis = oscCfg.range + oscCfg.tune;
-      const freqHz = freq * Math.pow(2, offsetSemis / 12);
-      osc.frequency.setValueAtTime(freqHz, now);
-      lfoGain.connect(osc.detune);
-      osc.connect(gain);
-      gain.connect(this.filter);
-      osc.start(now);
-      return { osc, gain };
-    });
+    this.oscillators = params.osc
+      .filter((oscCfg) => oscCfg.enabled)
+      .map((oscCfg) => {
+        const osc = createOscillatorNode(this.ctx, oscCfg.wave);
+        const gain = this.ctx.createGain();
+        gain.gain.value = oscCfg.volume;
+        const offsetSemis = oscCfg.range + oscCfg.tune;
+        const freqHz = freq * Math.pow(2, offsetSemis / 12);
+        osc.frequency.setValueAtTime(freqHz, now);
+        lfoGain.connect(osc.detune);
+        osc.connect(gain);
+        gain.connect(this.filter);
+        osc.start(now);
+        return { osc, gain };
+      });
 
     // Noise
     this.noise = createNoiseNode(this.ctx);

@@ -20,6 +20,10 @@
       <div class="top-row">
         <div class="module osc yellow" data-title="Oscillator 1">
           <h2>Oscillator 1</h2>
+          <label class="inline">
+            <input type="checkbox" id="osc1-enabled" checked>
+            Enabled
+          </label>
           <label>Waveform
             <select id="osc1-wave">
               <option value="sine">Sine</option>
@@ -47,6 +51,10 @@
 
         <div class="module osc yellow" data-title="Oscillator 2">
           <h2>Oscillator 2</h2>
+          <label class="inline">
+            <input type="checkbox" id="osc2-enabled" checked>
+            Enabled
+          </label>
           <label>Waveform
             <select id="osc2-wave">
               <option value="sine">Sine</option>
@@ -74,6 +82,10 @@
 
         <div class="module osc yellow" data-title="Oscillator 3">
           <h2>Oscillator 3</h2>
+          <label class="inline">
+            <input type="checkbox" id="osc3-enabled" checked>
+            Enabled
+          </label>
           <label>Waveform
             <select id="osc3-wave">
               <option value="sine">Sine</option>
@@ -119,7 +131,24 @@
 
         <div class="module scope blue" data-title="Waveform">
           <h2>Waveform</h2>
-          <canvas id="wave-canvas" width="400" height="180"></canvas>
+          <div class="scope-grid">
+            <div>
+              <span class="scope-label">Osc 1</span>
+              <canvas id="wave-osc1" width="360" height="90"></canvas>
+            </div>
+            <div>
+              <span class="scope-label">Osc 2</span>
+              <canvas id="wave-osc2" width="360" height="90"></canvas>
+            </div>
+            <div>
+              <span class="scope-label">Osc 3</span>
+              <canvas id="wave-osc3" width="360" height="90"></canvas>
+            </div>
+            <div class="span2">
+              <span class="scope-label">Combined</span>
+              <canvas id="wave-combined" width="740" height="120"></canvas>
+            </div>
+          </div>
         </div>
       </div>
 
